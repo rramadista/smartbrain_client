@@ -18,7 +18,7 @@ const Register = ({ loadUser, onRouteChange }) => {
 	};
 
 	const onSubmitRegister = () => {
-		fetch('http://localhost:5000/register', {
+		fetch('https://blooming-crag-02132.herokuapp.com/register', {
 			method: 'post',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
@@ -29,7 +29,7 @@ const Register = ({ loadUser, onRouteChange }) => {
 		})
 			.then((res) => res.json())
 			.then((user) => {
-				if (user) {
+				if (user.id) {
 					loadUser(user);
 					onRouteChange('home');
 				}

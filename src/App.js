@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Particles from 'react-particles-js';
-import Clarifai from 'clarifai';
 import './App.css';
 import Navigation from './components/navigation/navigation.component';
 import Logo from './components/logo/logo.component';
@@ -9,10 +8,6 @@ import ImageLinkForm from './components/image-link-form/image-link-form.componen
 import FaceRecognition from './components/face-recognition/face-recognition.component';
 import SignIn from './components/sign-in/sign-in.component';
 import Register from './components/register/register.component';
-
-const app = new Clarifai.App({
-	apiKey: '4fca0f7764da4c21a500c65a7d1c2937',
-});
 
 const particlesOptions = {
 	particles: {
@@ -29,7 +24,7 @@ const particlesOptions = {
 function App() {
 	const [input, setInput] = useState('');
 	const [imageUrl, setImageUrl] = useState('');
-	const [box, setBox] = useState({});
+	const [boxAll, setBoxAll] = useState([]);
 	const [route, setRoute] = useState('signin');
 	const [isSignedIn, setIsSignedIn] = useState(false);
 	const [user, setUser] = useState({
@@ -51,23 +46,47 @@ function App() {
 	};
 
 	const calculateFaceLocation = (data) => {
-		const clarifaiFace =
-			data.outputs[0].data.regions[0].region_info.bounding_box;
+		const clarifaiFaceAll = data.outputs[0].data.regions;
 		const image = document.getElementById('inputImage');
 		const width = Number(image.width);
 		const height = Number(image.height);
-
-		return {
-			leftCol: clarifaiFace.left_col * width,
-			topRow: clarifaiFace.top_row * height,
-			rightCol: width - clarifaiFace.right_col * width,
-			bottomRow: height - clarifaiFace.bottom_row * height,
-		};
+		const boxArr = clarifaiFaceAll.map((region) => {
+			return {
+				leftCol: region.region_info.bounding_box.left_col * width,
+				topRow: region.region_info.bounding_box.top_row * height,
+				rightCol:
+					width - region.region_info.bounding_box.right_col * width,
+				bottomRow:
+					height -
+					region.region_info.bounding_box.bottom_row * height,
+			};
+		});
+		return boxArr;
 	};
 
-	const displayFaceBox = (box) => {
-		setBox(box);
+	const displayFaceBox = (boxAll) => {
+		setBoxAll(boxAll);
+		console.log(boxAll.length);
 	};
+
+	// const calculateFaceLocation = (data) => {
+	// 	const clarifaiFace =
+	// 		data.outputs[0].data.regions[0].region_info.bounding_box;
+	// 	const image = document.getElementById('inputImage');
+	// 	const width = Number(image.width);
+	// 	const height = Number(image.height);
+
+	// 	return {
+	// 		leftCol: clarifaiFace.left_col * width,
+	// 		topRow: clarifaiFace.top_row * height,
+	// 		rightCol: width - clarifaiFace.right_col * width,
+	// 		bottomRow: height - clarifaiFace.bottom_row * height,
+	// 	};
+	// };
+
+	// const displayFaceBox = (box) => {
+	// 	setBox(box);
+	// };
 
 	const onInputChange = (e) => {
 		setInput(e.target.value);
@@ -76,11 +95,17 @@ function App() {
 	const onButtonSubmit = () => {
 		setImageUrl(input);
 
-		app.models
-			.predict(Clarifai.FACE_DETECT_MODEL, input)
+		fetch('https://blooming-crag-02132.herokuapp.com/imageurl', {
+			method: 'post',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				input: input,
+			}),
+		})
+			.then((res) => res.json())
 			.then((res) => {
 				if (res) {
-					fetch('http://localhost:5000/image', {
+					fetch('https://blooming-crag-02132.herokuapp.com/image', {
 						method: 'put',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
@@ -88,7 +113,8 @@ function App() {
 						}),
 					})
 						.then((res) => res.json())
-						.then((count) => setUser({ ...user, entries: count }));
+						.then((count) => setUser({ ...user, entries: count }))
+						.catch(console.log);
 				}
 				displayFaceBox(calculateFaceLocation(res));
 			})
@@ -116,7 +142,7 @@ function App() {
 						onInputChange={onInputChange}
 						onButtonSubmit={onButtonSubmit}
 					/>
-					<FaceRecognition imageUrl={imageUrl} box={box} />
+					<FaceRecognition imageUrl={imageUrl} boxAll={boxAll} />
 				</div>
 			) : route === 'signin' ? (
 				<SignIn loadUser={loadUser} onRouteChange={onRouteChange} />
